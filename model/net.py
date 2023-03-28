@@ -28,8 +28,8 @@ class CNNMnist(nn.Module):
         定义网络
         """
         super(CNNMnist, self).__init__()
-        self.conv1 = nn.Conv2d(1, 10, kernel_size=(5,5))
-        self.conv2 = nn.Conv2d(10, 20, kernel_size=(5,5))
+        self.conv1 = nn.Conv2d(1, 10, kernel_size=(5, 5))
+        self.conv2 = nn.Conv2d(10, 20, kernel_size=(5, 5))
         self.conv2_drop = nn.Dropout2d()
         self.fc1 = nn.Linear(320, 50)
         self.fc2 = nn.Linear(50, 10)
@@ -42,3 +42,19 @@ class CNNMnist(nn.Module):
         x = F.dropout(x, training=self.training)
         x = self.fc2(x)
         return F.log_softmax(x, dim=1)
+
+
+class MLP(nn.Module):
+    def __init__(self, input_dim: int, output_dim: int, num_hidden_layers=None):
+        super(MLP, self).__init__()
+        if num_hidden_layers is None:
+            num_hidden_layers = int(input_dim * output_dim * 2 / 3)
+        self.model = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(input_dim, num_hidden_layers),
+            nn.ReLU(),
+            nn.Linear(num_hidden_layers, output_dim)
+        )
+
+    def forward(self, x):
+        return self.model(x)
