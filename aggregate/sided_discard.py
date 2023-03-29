@@ -73,7 +73,7 @@ class SidedDiscardAggregator(AbstractAggregator):
     def _select_clients(self, distance_list: Tensor) -> List[int]:
         _, indexes = torch.sort(distance_list)
         indexes = indexes[self.malicious_upper:self.num_clients - self.malicious_upper]
-        selected_client_list = indexes.detach().numpy().tolist()
+        selected_client_list = indexes.detach().cpu().numpy().tolist()
         return selected_client_list
 
     def _check_init(self, args):
@@ -99,8 +99,7 @@ class CKKSSidedDiscardAggregator(AbstractAggregator):
         # 4. 对剩余客户端进行聚合
         global_parameters = copy.deepcopy(client_updates[selected_client_ids[0]])
         ckks_num_clients = ts.ckks_tensor(self.context,
-                                          torch.tensor([1.0 / len(selected_client_ids)], dtype=torch.float).to(
-                                              self.device))
+                                          torch.tensor([1.0 / len(selected_client_ids)], dtype=torch.float).cpu())
         for neural_level in global_parameters.keys():
             for id in selected_client_ids:
                 if id != selected_client_ids[0]:
@@ -121,7 +120,7 @@ class CKKSSidedDiscardAggregator(AbstractAggregator):
     def _ckks_distance_mean(self, client_updates: List[OrderedDict[str, ts.CKKSTensor]],
                             ckks_update_mean: OrderedDict[str, ts.CKKSTensor]) -> List[ts.CKKSTensor]:
         num_updates = len(client_updates)
-        distance_list = [ts.ckks_tensor(self.context, torch.tensor([0], dtype=torch.float).to(self.device))
+        distance_list = [ts.ckks_tensor(self.context, torch.tensor([0], dtype=torch.float).cpu())
                          for _ in range(num_updates)]
         for neural_level in ckks_update_mean.keys():
             for client_id in range(num_updates):
@@ -135,7 +134,7 @@ class CKKSSidedDiscardAggregator(AbstractAggregator):
 
         _, indexes = torch.sort(distance_plain_list)
         indexes = indexes[self.malicious_upper:self.num_clients - self.malicious_upper]
-        selected_client_list = indexes.detach().numpy().tolist()
+        selected_client_list = indexes.detach().cpu().numpy().tolist()
         return selected_client_list
 
     def _check_init(self, args):

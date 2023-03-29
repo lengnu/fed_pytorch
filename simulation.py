@@ -24,7 +24,7 @@ def print_info(flag: int):
     elif flag == 3:
         print('==========================3.初始化网络==========================')
     elif flag == 4:
-        print('==========================4.生成辅助上下文=======================')
+        print('==========================4.生成辅助上下文======================')
     elif flag == 5:
         print('==========================5.初始化服务器========================')
     elif flag == 6:
@@ -92,13 +92,13 @@ class Simulator(object):
         """
         net = None
         if self.args.model == 'mlp':
-            net = MLP(self.input_dim * self.channels, self.num_labels)
+            net = MLP(self.input_dim * self.channels, self.num_labels).to(self.args.device)
             summary(net, input_size=(self.channels, self.input_dim))
         elif self.args.model == 'cnn' and self.args.dataset == 'mnist':
-            net = CNNMnist()
+            net = CNNMnist().to(self.args.device)
             summary(net, input_size=(1, 28, 28))
         elif self.args.model == 'cnn' and self.args.dataset == 'cifar10':
-            net = CNNCifar()
+            net = CNNCifar().to(self.args.device)
             summary(net, input_size=(3, 32, 32))
         else:
             raise ValueError('model ', self.args.model, 'is not supported')
@@ -171,8 +171,8 @@ class Simulator(object):
             selected_client_list = server.select_clients()
             print('select_client_list : ', [index for index in selected_client_list])
             # 3. 客户端本地训练
-            print('client_local_update : ', end='')
             for selected_client in selected_client_list:
+                print('\tclient ', selected_client, ' start local train......')
                 client = client_list[selected_client]
                 # 3.1 客户端本地更新全局参数
                 client.set_parameters(global_parameters)
@@ -180,16 +180,15 @@ class Simulator(object):
                 local_update, local_loss = client.train()
                 local_update_list.append(local_update)
                 local_loss_list.append(local_loss)
-                print(selected_client, end='\t')
             # 4. 服务器聚合
-            print('\nserver start aggregate ')
+            print('server start aggregate...... ')
             server.aggregate(local_update_list)
             # 5.统计训练损失
-            print('train avg loss {:.8f}'
+            print('\ttrain avg loss: \t{:.8f}'
                   .format(sum(local_loss_list) / len(local_loss_list)))
             # 6.参数评估
             acc = evaluator.evaluate(server.get_global_parameters())
-            print('test avg acc {:.8f}-\n'
+            print('\ttest  avg  acc: \t{:.8f}\n'
                   .format(acc))
 
     def check_args(self, args):

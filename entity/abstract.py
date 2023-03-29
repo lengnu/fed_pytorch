@@ -1,5 +1,6 @@
 import collections
 import copy
+import time
 from abc import ABC, abstractmethod
 from typing import OrderedDict, List, Union, final
 
@@ -204,6 +205,7 @@ class AbstractTrainer(ABC):
         return local_update
 
     def train(self):
+        # start = time.time()
         net = self.net
         net.train()
         optimizer = torch.optim.SGD(net.parameters(), lr=self.args.lr, momentum=self.args.momentum)
@@ -222,6 +224,7 @@ class AbstractTrainer(ABC):
             # 统计一次迭代的总体损失
             epoch_loss.append(sum(batch_loss) / len(batch_loss))
         # 返回参数和损失大小
+        # print('train time ',time.time() - start)
         return self.get_parameters(), sum(epoch_loss) / len(epoch_loss)
 
 

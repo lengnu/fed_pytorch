@@ -1,4 +1,5 @@
 import copy
+import time
 
 import torch
 
@@ -38,17 +39,20 @@ class CKKSClient(AbstractTrainer):
 
     def set_parameters(self, global_parameters):
         # 解密CKKSTensor并变化为net的形状
+        #  start = time.time()
         parameters = copy.deepcopy(global_parameters)
         for neural_level, param in parameters.items():
             parameters[neural_level] = torch.tensor(param.decrypt().tolist(), device=self.args.device,
                                                     dtype=torch.float).reshape(self.net_meta[neural_level])
+        end = time.time()
+        # print('devrypt time ' ,end - start)
         self.net.load_state_dict(parameters)
 
     def get_parameters(self):
         local_update = super().get_parameters()
         # 加密Tensor
         for neural_level, param in local_update.items():
-            local_update[neural_level] = ts.ckks_tensor(self.enc_context, local_update[neural_level].flatten())
+            local_update[neural_level] = ts.ckks_tensor(self.context, local_update[neural_level].cpu().flatten())
         return local_update
 
 
@@ -60,9 +64,3 @@ if __name__ == '__main__':
     )
     context.generate_galois_keys()
     context.global_scale = 2 ** 40
-
-    tensor_1 = torch.tensor([[1, 2], [3, 4]])
-    tensor_2 = torch.tensor([[3, 4], [1, 2]])
-    enc_1 = ts.ckks_tensor(context, tensor_1)
-    enc_2 = ts.ckks_tensor(context, tensor_2)
-    print(torch.tensor(enc_1.decrypt().tolist()).reshape(2, 2))
