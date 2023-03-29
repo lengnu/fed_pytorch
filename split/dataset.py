@@ -9,7 +9,9 @@ def mnist():
     dataset_train = MNIST(root=MNIST_DATA_PATH, train=True, download=True, transform=trans_mnist)
     dataset_test = MNIST(root=MNIST_DATA_PATH, train=False, download=True, transform=trans_mnist)
     num_labels = 10
-    return dataset_train, dataset_test, num_labels
+    input_dim = 28 * 28
+    channels = 1
+    return dataset_train, dataset_test, input_dim, channels, num_labels
 
 
 def cifar10():
@@ -18,4 +20,6 @@ def cifar10():
     dataset_train = CIFAR10(root=CIFAR10_DATA_PATH, train=True, download=True, transform=trans_cifar10)
     dataset_test = CIFAR10(root=CIFAR10_DATA_PATH, train=False, download=True, transform=trans_cifar10)
     num_labels = 10
-    return dataset_train, dataset_test, num_labels
+    input_dim = 32 * 32
+    channels = 3
+    return dataset_train, dataset_test, input_dim, channels, num_labels

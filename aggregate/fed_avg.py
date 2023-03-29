@@ -24,7 +24,7 @@ class FedAvgAggregator(AbstractAggregator):
         super().__init__(args)
 
     def choice_clients(self):
-        return np.random.choice(int(self.args.select_frac * self.num_clients), self.client_ids, replace=False)
+        return np.random.choice(self.client_ids, int(self.args.select_frac * self.num_clients), replace=False)
 
     def _raw_aggregate(self, client_updates: List[OrderedDict[str, Union[Tensor, ts.CKKSTensor]]]) -> \
             OrderedDict[str, Union[Tensor, ts.CKKSTensor]]:

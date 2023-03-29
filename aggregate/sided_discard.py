@@ -82,11 +82,10 @@ class SidedDiscardAggregator(AbstractAggregator):
             raise ValueError('malicious_frac should not more than 0.33')
 
 
-class SidedDiscardEncryptAggregator(AbstractAggregator):
+class CKKSSidedDiscardAggregator(AbstractAggregator):
 
-    def __init__(self, context, args):
-        super().__init__(args)
-        self.context = context
+    def __init__(self, args, context):
+        super().__init__(args, context)
         self.malicious_upper = int(args.num_clients * args.malicious_frac)
 
     def _raw_aggregate(self, client_updates: List[OrderedDict[str, ts.CKKSTensor]]) -> \

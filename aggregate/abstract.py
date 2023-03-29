@@ -17,12 +17,13 @@ class AbstractAggregator(ABC):
     抽象聚合器
     """
 
-    def __init__(self, args):
+    def __init__(self, args, context=None):
         self._check_init(args)
         self.num_clients = args.num_clients
         self.client_ids = range(self.num_clients)
         self.device = args.device
         self.args = args
+        self.context = context
 
     @final
     def aggregate(self, client_updates: List[OrderedDict[str, Union[Tensor, ts.CKKSTensor]]]) -> \

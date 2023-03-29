@@ -9,11 +9,6 @@ from torch.utils.data import DataLoader
 import tenseal as ts
 
 from aggregate.abstract import AbstractAggregator
-from aggregate.fed_avg import FedAvgAggregator
-from aggregate.krum import KrumAggregator
-from aggregate.sided_discard import SidedDiscardAggregator, SidedDiscardEncryptAggregator
-from aggregate.median import MedianAggregator
-from aggregate.trimmed_mean import TrimmedMeanAggregator
 from split.splitter import DatasetSplitter
 
 
@@ -22,11 +17,15 @@ class AbstractServer(ABC):
     一个抽象的服务器，进行聚合
     """
 
-    def __init__(self, args, init_parameters):
+    def __init__(self, args, init_parameters, context=None):
         self.check_init(args, init_parameters)
         self.args = args
-        self.global_parameters = init_parameters
+        self.context = context
+        self.global_parameters = self.init_params(init_parameters)
         self.aggregator = self._choice_aggregator(args)
+
+    def init_params(self, init_parameters):
+        return copy.deepcopy(init_parameters)
 
     @final
     def check_init(self, args, init_parameters) -> None:
@@ -46,35 +45,20 @@ class AbstractServer(ABC):
         """
         pass
 
+    @final
     def _choice_aggregator(self, args) -> AbstractAggregator:
         """
         导入服务端的聚合器
         :param args:    聚合策略
         :return:
         """
-        # 先由子类进行寻找
-        aggregator = self._find_aggregator(args)
-        if aggregator is not None:
-            return aggregator
-        # 子类找不到父类进行加载
-        if args.strategy == 'fed_avg':
-            return FedAvgAggregator(args)
-        elif args.strategy == 'krum':
-            return KrumAggregator(args)
-        elif args.strategy == 'median':
-            return MedianAggregator(args)
-        elif args.strategy == 'trimmed_mean':
-            return TrimmedMeanAggregator(args)
-        elif args.strategy == 'sided_discard':
-            return SidedDiscardAggregator(args)
-        elif args.strategy == 'sided_discard_enc':
-            return SidedDiscardEncryptAggregator(args)
-        else:
-            raise ValueError('There is no such aggregation strategy ', args.strategy)
+        # 由具体实现类去进行选择
+        return self._find_aggregator(args)
 
+    @abstractmethod
     def _find_aggregator(self, args) -> AbstractAggregator:
         """
-        子类需要使用额外的聚合器时，就重写该方法去自行扩展
+        子类重写该方法以便返回一个聚合器
         :param args:    仿真参数
         :return:        聚合器
         """
@@ -107,6 +91,7 @@ class AbstractServer(ABC):
         """
         return self.aggregator.aggregate(client_updates)
 
+    @final
     def select_clients(self):
         """
         选择下一轮训练客户端，由具体的聚合算法进行选择
@@ -140,15 +125,29 @@ class AbstractServer(ABC):
 
 
 class AbstractTrainer(ABC):
+    """
+    抽象的训练器，由不同的Client继继承实例化
+    """
+
     def __init__(self,
                  client_id,
                  dataset,
-                 partition,
+                 partition_items,
                  num_labels,
                  args,
                  net,
-                 malicious=False
+                 malicious=False,
+                 context=None
                  ):
+        """
+        :param client_id:       client标识，全局唯一
+        :param dataset:         数据集 MNIST/CIFAR10/...
+        :param partition_items: 客户端的数据集元素索引,dataset加载时只取partition_items中的图片
+        :param num_labels:      数据集类别数量
+        :param args:            仿真参数
+        :param net:             神经网络
+        :param malicious:       客户端是否是恶意的，只有malicious为True参数中配置的攻击才生效
+        """
         self.id = client_id
         self.num_labels = num_labels
         self.args = args
@@ -156,20 +155,33 @@ class AbstractTrainer(ABC):
         self.malicious = malicious
         self.net_meta = self.get_net_meta()
         self.loss_func = nn.CrossEntropyLoss().to(self.args.device)
-        self.data_loader = DataLoader(DatasetSplitter(dataset, partition, args, malicious),
+        self.data_loader = DataLoader(DatasetSplitter(dataset, partition_items, args, malicious),
                                       batch_size=args.local_batch_size, shuffle=True)
+        self.context = context
+        self._after_properties()
+
+    def _after_properties(self):
+        """
+        留给子类做一些额外工作，例如修改父类定义的损失函数，加载器等
+        """
+        pass
 
     def get_net_meta(self) -> OrderedDict[str, Tensor]:
         """
         获取神经网络每一层的tensor结构
-        :return:
+        :return:    神经网络结果，包括层名称和大小
         """
         net_meta = collections.OrderedDict()
-        for level, model in self.net.state_dict().items():
-            net_meta[level] = model.shape
+        for neural_level, model in self.net.state_dict().items():
+            net_meta[neural_level] = model.shape
         return net_meta
 
-    def set_parameters(self, global_parameters):
+    def set_parameters(self, global_parameters) -> None:
+        """
+        根据全局模型更新本地网络
+        :param global_parameters:   全局更新
+        :return:
+        """
         parameters = copy.deepcopy(global_parameters)
         self.net.load_state_dict(parameters)
 
@@ -180,13 +192,14 @@ class AbstractTrainer(ABC):
                 # 如果开启了惰性攻击，则随机生成网络参数
                 gauss_mean = self.args.gauss_mean
                 gauss_std = self.args.gauss_std
-                for level, shape in self.net_meta.items():
-                    local_update[level] = torch.normal(mean=gauss_mean, std=gauss_std, size=shape)
+                for neural_level, shape in self.net_meta.items():
+                    local_update[neural_level] = torch.normal(mean=gauss_mean, std=gauss_std, size=shape)
             elif self.args.gradient_scale_enable:
-                # 梯度缩放
+                # 梯度缩放攻击
                 scale_factor = torch.tensor(self.args.scale, dtype=torch.float)
                 local_update = self.net.state_dict() * scale_factor
         else:
+            # 无攻击，直接提取网络参数
             local_update = self.net.state_dict()
         return local_update
 
@@ -210,3 +223,52 @@ class AbstractTrainer(ABC):
             epoch_loss.append(sum(batch_loss) / len(batch_loss))
         # 返回参数和损失大小
         return self.get_parameters(), sum(epoch_loss) / len(epoch_loss)
+
+
+class AbstractEvaluator(ABC):
+    """
+    评估测试集
+    """
+
+    def __init__(self, net, dataset_test, batch_size, device):
+        self.net = copy.deepcopy(net)
+        self.dataset_test = dataset_test
+        self.data_loader = DataLoader(dataset_test, batch_size=batch_size, shuffle=True)
+        self.device = device
+        self.loss_func = self._init_loss_func()
+
+    def _init_loss_func(self):
+        """
+        设置损失函数，如果需要不同的损失函数由子类实现
+        :return:    损失函数
+        """
+        return nn.CrossEntropyLoss().to(self.device)
+
+    def evaluate(self, parameters):
+        """
+        模型评估
+        :param parameters: 评估参数
+        :return:    模型精度
+        """
+        self.net.load_state_dict(copy.deepcopy(parameters))
+        return self._evaluate_acc()
+
+    def _evaluate_acc(self):
+        """
+        评估模型
+        :return:    模型精度
+        """
+        net = self.net
+        net.eval()
+        accurate_count = 0.0
+        total_count = len(self.data_loader.dataset)
+        for batch, (items, labels) in enumerate(self.data_loader):
+            items, labels = items.to(self.device), labels.to(self.device)
+            predictive_labels = net(items)
+            accurate_count += (predictive_labels.argmax(dim=1) == labels).sum().item()
+        return accurate_count / total_count
+
+
+class GeneralEvaluator(AbstractEvaluator):
+    def __init__(self, net, dataset_test, batch_size, device):
+        super().__init__(net, dataset_test, batch_size, device)
