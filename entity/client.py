@@ -37,7 +37,7 @@ class CKKSClient(AbstractTrainer):
         if context is None:
             raise ValueError('enc_context can not be None')
 
-    def set_parameters(self, global_parameters):
+    def update_parameters(self, global_parameters):
         # 解密CKKSTensor并变化为net的形状
         #  start = time.time()
         parameters = copy.deepcopy(global_parameters)
@@ -54,6 +54,9 @@ class CKKSClient(AbstractTrainer):
         for neural_level, param in local_update.items():
             local_update[neural_level] = ts.ckks_tensor(self.context, local_update[neural_level].cpu().flatten())
         return local_update
+
+
+
 
 
 if __name__ == '__main__':

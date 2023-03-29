@@ -177,7 +177,7 @@ class AbstractTrainer(ABC):
             net_meta[neural_level] = model.shape
         return net_meta
 
-    def set_parameters(self, global_parameters) -> None:
+    def update_parameters(self, global_parameters) -> None:
         """
         根据全局模型更新本地网络
         :param global_parameters:   全局更新
@@ -194,15 +194,20 @@ class AbstractTrainer(ABC):
                 gauss_mean = self.args.gauss_mean
                 gauss_std = self.args.gauss_std
                 for neural_level, shape in self.net_meta.items():
-                    local_update[neural_level] = torch.normal(mean=gauss_mean, std=gauss_std, size=shape)
+                    local_update[neural_level] = torch.normal(mean=gauss_mean, std=gauss_std, size=shape).to(
+                        self.args.device)
             elif self.args.gradient_scale_enable:
                 # 梯度缩放攻击
-                scale_factor = torch.tensor(self.args.scale, dtype=torch.float)
+                scale_factor = torch.tensor(self.args.scale, dtype=torch.float).to(self.args.device)
                 local_update = self.net.state_dict() * scale_factor
         else:
             # 无攻击，直接提取网络参数
             local_update = self.net.state_dict()
         return local_update
+
+    @final
+    def get_global_parameters(self):
+        return self.net.state_dict()
 
     def train(self):
         # start = time.time()

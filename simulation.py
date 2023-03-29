@@ -34,9 +34,9 @@ def print_info(flag: int):
     elif flag == 8:
         print('==========================8.初始化评估器========================')
     elif flag == 9:
-        print('==============================================================')
+        print('===============================================================')
         print('===========================仿真正式开始=========================')
-        print('==============================================================')
+        print('===============================================================')
         print()
 
 
@@ -57,7 +57,7 @@ class Simulator(object):
         # 3.生成训练网络
         print_info(3)
         self.net = self.init_net_test()
-        # 4.生成加密上下文，如果采样密态聚合就返回ckks_context,如果采样明文聚合就返回None
+        # 4.生成加密上下文，如果采用密态聚合就返回ckks_context,如果明文聚合就返回None
         print_info(4)
         self.ckks_context = self.init_ckks_context()
         print_info(5)
@@ -87,7 +87,7 @@ class Simulator(object):
 
     def init_net_test(self):
         net = MnistTest().to(self.args.device)
-        summary(net, input_size=(1, 28, 28))
+        summary(net, input_size=(1, 28, 28), batch_size=self.args.local_batch_size)
         return net
 
     def init_net(self):
@@ -98,13 +98,13 @@ class Simulator(object):
         net = None
         if self.args.model == 'mlp':
             net = MLP(self.input_dim * self.channels, self.num_labels).to(self.args.device)
-            summary(net, input_size=(self.channels, self.input_dim))
+            summary(net, input_size=(self.channels, self.input_dim), batch_size=self.args.local_batch_size)
         elif self.args.model == 'cnn' and self.args.dataset == 'mnist':
             net = CNNMnist().to(self.args.device)
-            summary(net, input_size=(1, 28, 28))
+            summary(net, input_size=(1, 28, 28), batch_size=self.args.local_batch_size)
         elif self.args.model == 'cnn' and self.args.dataset == 'cifar10':
             net = CNNCifar().to(self.args.device)
-            summary(net, input_size=(3, 32, 32))
+            summary(net, input_size=(3, 32, 32), batch_size=self.args.local_batch_size)
         else:
             raise ValueError('model ', self.args.model, 'is not supported')
         return net
@@ -170,30 +170,32 @@ class Simulator(object):
             local_loss_list = []
 
             print('=====================epoch {:d} start========================='.format(epoch))
-            # 1. 获取全局参数
-            global_parameters = server.get_global_parameters()
-            # 2. 选择客户端
+            # 1. 选择客户端
             selected_client_list = server.select_clients()
-            print('select_client_list : ', [index for index in selected_client_list])
-            # 3. 客户端本地训练
+            print('\t select_client_list : ', [index for index in selected_client_list])
+            # 2. 客户端本地训练
             for selected_client in selected_client_list:
-                print('\tclient ', selected_client, ' start local train......')
+                print('\t client ', selected_client, ' start local train')
                 client = client_list[selected_client]
-                # 3.1 客户端本地更新全局参数
-                client.set_parameters(global_parameters)
-                # 3.2 local_update
                 local_update, local_loss = client.train()
                 local_update_list.append(local_update)
                 local_loss_list.append(local_loss)
             # 4. 服务器聚合
-            print('\tserver start aggregate...... ')
+            print('\t server start aggregate, strategy [ ', self.args.strategy, ' ]')
             server.aggregate(local_update_list)
-            # 5.统计训练损失
-            print('\ttrain avg loss: \t{:.8f}'
+
+            # 5. 客户端更新
+            global_parameters = server.get_global_parameters()
+            for selected_client in selected_client_list:
+                client_list[selected_client].update_parameters(global_parameters)
+
+            # 6.统计训练损失
+            print('\t train avg loss: \t{:.8f}'
                   .format(sum(local_loss_list) / len(local_loss_list)))
-            # 6.参数评估
-            acc = evaluator.evaluate(server.get_global_parameters())
-            print('\ttest  avg  acc: \t{:.8f}\n'
+
+            # 7.参数评估
+            acc = evaluator.evaluate(client_list[selected_client_list[0]].get_global_parameters())
+            print('\t test  avg  acc: \t{:.8f}\n'
                   .format(acc))
 
     def check_args(self, args):

@@ -10,18 +10,18 @@ def args_parser():
     parser = argparse.ArgumentParser()
     # federated arguments
     parser.add_argument('--epochs', type=int, default=20, help="rounds of training")
-    parser.add_argument('--num_clients', type=int, default=2, help="number of users: K")
+    parser.add_argument('--num_clients', type=int, default=4, help="number of users: K")
     parser.add_argument('--select_frac', type=float, default=0.5, help="the fraction of clients: C")
     parser.add_argument('--local_epochs', type=int, default=2, help="the number of local epochs: E")
     parser.add_argument('--local_batch_size', type=int, default=32, help="local batch size: B")
     parser.add_argument('--lr', type=float, default=0.01, help="learning rate")
     parser.add_argument('--momentum', type=float, default=0.5, help="SGD momentum (default: 0.5)")
     parser.add_argument('--dataset', type=str, default='mnist', help="train-test datasplit.py type, user or sample")
-    parser.add_argument('--strategy', type=str, default='ckks_sided_discard', help="aggregate algorithm")
+    parser.add_argument('--strategy', type=str, default='krum', help="aggregate algorithm")
     parser.add_argument('--eval_batch_size', type=int, default=128, help="test batch size")
 
     # attacker  arguments
-    parser.add_argument('--malicious_frac', type=float, default=0.0, help='percentage of malicious clients')
+    parser.add_argument('--malicious_frac', type=float, default=0.3, help='percentage of malicious clients')
     parser.add_argument('--label_flipping_enable', type=bool, default=False,
                         help='whether to enable the label_flipping attack')
     parser.add_argument('--backdoor_enable', type=float, default=False, help='whether to enable the backdoor attack')
