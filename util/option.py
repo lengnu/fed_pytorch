@@ -17,7 +17,7 @@ def args_parser():
     parser.add_argument('--lr', type=float, default=0.01, help="learning rate")
     parser.add_argument('--momentum', type=float, default=0.5, help="SGD momentum (default: 0.5)")
     parser.add_argument('--dataset', type=str, default='mnist', help="train-test datasplit.py type, user or sample")
-    parser.add_argument('--strategy', type=str, default='ckks_sided_discard', help="aggregate algorithm")
+    parser.add_argument('--strategy', type=str, default='sided_discard', help="aggregate algorithm")
     parser.add_argument('--eval_batch_size', type=int, default=128, help="test batch size")
 
     # attacker  arguments

@@ -45,8 +45,5 @@ class CKKSServer(GeneralServer):
     def init_params(self, init_parameters):
         global_parameters = copy.deepcopy(init_parameters)
         for neural_level, param in global_parameters.items():
-            print(neural_level, ' size = ', param.numel())
-
-        for neural_level, param in global_parameters.items():
             global_parameters[neural_level] = ts.ckks_tensor(self.context, global_parameters[neural_level])
         return global_parameters
