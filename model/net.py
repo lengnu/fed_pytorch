@@ -43,6 +43,24 @@ class CNNMnist(nn.Module):
         return self.model(x)
 
 
+class MnistTest(nn.Module):
+    def __init__(self) -> None:
+        """
+        定义网络
+        """
+        super(MnistTest, self).__init__()
+        self.model = nn.Sequential(
+            nn.Conv2d(in_channels=1, out_channels=2, kernel_size=(5, 5), padding=2),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=4),
+            nn.Flatten(),
+            nn.Linear(7 * 7 * 2, 10)
+        )
+
+    def forward(self, x):
+        return self.model(x)
+
+
 class MLP(nn.Module):
     def __init__(self, input_dim: int, output_dim: int, num_hidden_layers=None):
         super(MLP, self).__init__()

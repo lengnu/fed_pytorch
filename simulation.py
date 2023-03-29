@@ -5,7 +5,7 @@ import torch
 from entity.abstract import AbstractServer, AbstractTrainer, GeneralEvaluator
 from entity.server import GeneralServer, CKKSServer
 from entity.client import GeneralClient, CKKSClient
-from model.net import MLP, CNNMnist, CNNCifar
+from model.net import MLP, CNNMnist, CNNCifar, MnistTest
 from split.dataset import mnist, cifar10
 from split.sampling import mnist_balance_iid, cifar10_balance_iid
 
@@ -56,7 +56,7 @@ class Simulator(object):
             self.init_dataset()
         # 3.生成训练网络
         print_info(3)
-        self.net = self.init_net()
+        self.net = self.init_net_test()
         # 4.生成加密上下文，如果采样密态聚合就返回ckks_context,如果采样明文聚合就返回None
         print_info(4)
         self.ckks_context = self.init_ckks_context()
@@ -84,6 +84,11 @@ class Simulator(object):
         if self.args.dataset == 'cifar10':
             return cifar10()
         raise ValueError('dataset ', self.args.dataset, 'is not supported')
+
+    def init_net_test(self):
+        net = MnistTest().to(self.args.device)
+        summary(net, input_size=(1, 28, 28))
+        return net
 
     def init_net(self):
         """
@@ -181,7 +186,7 @@ class Simulator(object):
                 local_update_list.append(local_update)
                 local_loss_list.append(local_loss)
             # 4. 服务器聚合
-            print('server start aggregate...... ')
+            print('\tserver start aggregate...... ')
             server.aggregate(local_update_list)
             # 5.统计训练损失
             print('\ttrain avg loss: \t{:.8f}'
