@@ -25,9 +25,11 @@ def get_root_path():
     return project_root_path
 
 
-separator = os.sep
 MNIST_DATA_PATH = get_root_path() + '/dataset/mnist/data'
 MNIST_SPLIT_PATH = get_root_path() + '/dataset/mnist/split'
 
 CIFAR10_DATA_PATH = get_root_path() + '/dataset/cifar10/data'
 CIFAR10_SPLIT_PATH = get_root_path() + '/dataset/cifar10/split'
+
+
+RESULTS_PATH = get_root_path() + '/result'

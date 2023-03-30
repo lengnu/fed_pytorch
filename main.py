@@ -1,17 +1,21 @@
-import numpy as np
 import torch
 
-import ssl
-import tenseal as ts
+from simulate.simulation import Simulator
+from util.option import args_parser
+
+
+def multiple_simulate():
+    args = args_parser()
+    args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
+    strategies = ['fed_avg', 'krum', 'median', 'trimmed_mean', 'median', 'sided_discard', 'ckks_sided_discard']
+    for index, agg_strategy in enumerate(strategies):
+        args.strategy = agg_strategy
+        if index == len(strategies) - 1:
+            simulator = Simulator(args, True)
+        else:
+            simulator = Simulator(args)
+        simulator.start()
+
 
 if __name__ == '__main__':
-    tensor = torch.ones(2, 3, device=torch.device('cpu'), dtype=torch.float)
-    bits_scale = 20
-    context = ts.context(
-        ts.SCHEME_TYPE.CKKS,
-        poly_modulus_degree=4096,
-        coeff_mod_bit_sizes=[24, bits_scale, bits_scale, bits_scale, 24]
-    )
-    context.global_scale = 2 ** bits_scale
-    context.generate_galois_keys()
-    ts.ckks_tensor(context, tensor)
+    multiple_simulate()

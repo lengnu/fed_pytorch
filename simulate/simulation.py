@@ -11,9 +11,13 @@ from split.sampling import mnist_balance_iid, cifar10_balance_iid
 
 import numpy as np
 import tenseal as ts
+import os
+import pandas as pd
+import matplotlib.pyplot as plt
 
-from util.option import args_parser
 from torchsummary import summary
+
+from util.constant import RESULTS_PATH
 
 
 def print_info(flag: int):
@@ -34,9 +38,14 @@ def print_info(flag: int):
     elif flag == 8:
         print('==========================8.初始化评估器========================')
     elif flag == 9:
-        print('===============================================================')
+        print('==============================================================')
         print('===========================仿真正式开始=========================')
-        print('===============================================================')
+        print('==============================================================')
+        print()
+    elif flag == 10:
+        print('==============================================================')
+        print('============================仿真完成============================')
+        print('==============================================================')
         print()
 
 
@@ -45,7 +54,8 @@ class Simulator(object):
     仿真器，进行Fed整体过程的仿真
     """
 
-    def __init__(self, args):
+    def __init__(self, args, picture=False):
+        self.picture = picture
         print_info(1)
         self.args = args
         # 1.记录仿真客户端数
@@ -159,12 +169,43 @@ class Simulator(object):
     def init_evaluator(self):
         return GeneralEvaluator(self.net, self.dataset_test, self.args.eval_batch_size, self.args.device)
 
+    def file_name(self):
+        return '{}/{}_{}_clients_{}_epochs_{}_malicious_{}.csv'.format(RESULTS_PATH,
+                                                                       self.args.dataset,
+                                                                       self.args.partition,
+                                                                       self.args.num_clients,
+                                                                       self.args.epochs,
+                                                                       self.args.malicious_frac)
+
+    def report_data(self, file_path, acc_list):
+        if not os.path.exists(file_path):
+            df = pd.DataFrame({'epochs': [i for i in range(self.args.epochs)]})
+            df.to_csv(file_path, index=False)
+        df = pd.read_csv(file_path)
+        df[self.args.strategy] = pd.Series(acc_list)
+        df.to_csv(file_path, index=False, sep=',')
+
+    def report_picture(self, file_path):
+        if self.picture:
+            df = pd.read_csv(file_path, index_col='epochs')
+            df.plot()
+            plt.xlabel('simulate round')
+            plt.ylabel('test acc')
+            plt.show()
+        pass
+
+    def serial(self, acc_list):
+        file_path = self.file_name()
+        self.report_data(file_path, acc_list)
+        self.report_picture(file_path)
+
     def start(self):
         epochs = self.args.epochs
         server = self.agg_server
         client_list = self.client_list
         server.get_global_parameters()
         evaluator = self.evaluator
+        test_acc_list = []
         for epoch in range(epochs):
             local_update_list = []
             local_loss_list = []
@@ -197,13 +238,11 @@ class Simulator(object):
             acc = evaluator.evaluate(client_list[selected_client_list[0]].get_global_parameters())
             print('\t test  avg  acc: \t{:.8f}\n'
                   .format(acc))
+            test_acc_list.append(str(acc))
+
+        # 8。将结果保存到文件
+        self.serial(test_acc_list)
+        print_info(10)
 
     def check_args(self, args):
         pass
-
-
-if __name__ == '__main__':
-    args = args_parser()
-    args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
-    simulator = Simulator(args)
-    simulator.start()

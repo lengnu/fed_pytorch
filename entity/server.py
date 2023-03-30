@@ -47,3 +47,8 @@ class CKKSServer(GeneralServer):
         for neural_level, param in global_parameters.items():
             global_parameters[neural_level] = ts.ckks_tensor(self.context, param.cpu().flatten())
         return global_parameters
+
+
+class AsyncCKKSServer(CKKSServer):
+    def __init__(self, args, init_parameters, context):
+        super().__init__(args, init_parameters, context)
