@@ -180,10 +180,10 @@ class Simulator(object):
     def report_data(self, file_path, acc_list):
         if not os.path.exists(file_path):
             df = pd.DataFrame({'epochs': [i for i in range(self.args.epochs)]})
-            df.to_csv(file_path, index=False)
+            df.to_csv(file_path, index=False,sep='\t')
         df = pd.read_csv(file_path)
         df[self.args.strategy] = pd.Series(acc_list)
-        df.to_csv(file_path, index=False, sep=',')
+        df.to_csv(file_path, index=False, sep='\t')
 
     def report_picture(self, file_path):
         if self.picture:

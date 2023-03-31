@@ -52,3 +52,4 @@ class CKKSServer(GeneralServer):
 class AsyncCKKSServer(CKKSServer):
     def __init__(self, args, init_parameters, context):
         super().__init__(args, init_parameters, context)
+
