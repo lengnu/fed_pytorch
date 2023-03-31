@@ -180,7 +180,7 @@ class Simulator(object):
     def report_data(self, file_path, acc_list):
         if not os.path.exists(file_path):
             df = pd.DataFrame({'epochs': [i for i in range(self.args.epochs)]})
-            df.to_csv(file_path, index=False,sep='\t')
+            df.to_csv(file_path, index=False, sep='\t')
         df = pd.read_csv(file_path)
         df[self.args.strategy] = pd.Series(acc_list)
         df.to_csv(file_path, index=False, sep='\t')
@@ -246,3 +246,38 @@ class Simulator(object):
 
     def check_args(self, args):
         pass
+
+
+class ClusterSimulator(object):
+    def __init__(self, args, picture=False):
+        self.picture = picture
+        print_info(1)
+        self.args = args
+        # 1.记录仿真客户端数
+        self.num_clients = args.num_clients
+        print_info(2)
+        # 2.选择数据集
+        self.dataset_train, self.dataset_test, self.input_dim, self.channels, self.num_labels = \
+            self.init_dataset()
+        # 3.生成训练网络
+        print_info(3)
+        self.net = self.init_net_test()
+        # 4.生成加密上下文，如果采用密态聚合就返回ckks_context,如果明文聚合就返回None
+        print_info(4)
+        self.ckks_context = self.init_ckks_context()
+        print_info(5)
+        # 5.根据聚合策略生成服务器
+        self.agg_server = self.choice_agg_server()
+        print_info(6)
+        # 6.对数据集进行划分
+        self.partition_items = self.partition_data()
+        print_info(7)
+        # 7.生成客户端列表
+        self.client_list = self.init_agg_clients()
+        print_info(8)
+
+        # 8.构建模型评估器
+
+
+        self.evaluator = self.init_evaluator()
+        print_info(9)

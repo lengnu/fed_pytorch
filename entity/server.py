@@ -49,7 +49,7 @@ class CKKSServer(GeneralServer):
         return global_parameters
 
 
-class AsyncCKKSServer(CKKSServer):
-    def __init__(self, args, init_parameters, context):
-        super().__init__(args, init_parameters, context)
+
+
+
 
